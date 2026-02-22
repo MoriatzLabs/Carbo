@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>Carbo</RootNamespace>
+    <AssemblyName>Carbo</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Logi.Actions.SDK" Version="*" />
+    <PackageReference Include="Google.Apis.Calendar.v3" Version="1.*" />
+    <PackageReference Include="Google.Apis.Gmail.v1" Version="1.*" />
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.*" />
+    <PackageReference Include="System.Net.Http" Version="4.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="metadata\plugin.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="metadata\Icon256x256.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Data\time_log.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Dashboard\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

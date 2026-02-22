@@ -1,0 +1,10 @@
+{
+  "pluginId": "com.carbo.founderplugin",
+  "pluginName": "Carbo",
+  "pluginVersion": "1.0.0",
+  "pluginDescription": "AI Founder Command Center for MX Master 4 — one-click Claude Code, meeting prep, focus mode, and time tracking.",
+  "author": "Carbo Team",
+  "usesApplicationApiOnly": true,
+  "icon": "metadata/Icon256x256.png",
+  "minSdkVersion": "1.0.0"
+}

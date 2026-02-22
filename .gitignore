@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# NuGet
+*.nupkg
+packages/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit
+client_secrets.json
+google_token.json
+
+# Local settings
+.claude/
