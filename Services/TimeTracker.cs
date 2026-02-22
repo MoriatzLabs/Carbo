@@ -6,11 +6,13 @@ namespace Carbo.Services;
 /// <summary>
 /// Background service that records time spent per project.
 /// Polls the active window every 15 seconds and logs entries to time_log.json.
-/// Fires a subtle haptic every 15 minutes as a passive tracking tick.
 /// </summary>
 public class TimeTracker
 {
-    private static string _activeProject = "Untracked";
+    // _activeProject is written by SetActiveProject (SDK/UI thread) and read by the
+    // poll timer callback (thread-pool thread). volatile ensures visibility without a lock.
+    private static volatile string _activeProject = "Untracked";
+
     private System.Timers.Timer? _pollTimer;
     private System.Timers.Timer? _hapticTimer;
 
@@ -28,13 +30,9 @@ public class TimeTracker
         _pollTimer.AutoReset = true;
         _pollTimer.Start();
 
-        // Subtle haptic every 15 minutes
+        // Haptic timer placeholder — actual haptic call wired up via SDK in plugin host
         _hapticTimer = new System.Timers.Timer(15 * 60 * 1000);
-        _hapticTimer.Elapsed += async (_, _) =>
-        {
-            // Haptic is triggered via plugin-level API; log only here
-            await Task.CompletedTask; // placeholder — haptic call goes through SDK
-        };
+        _hapticTimer.Elapsed += (_, _) => { /* SDK haptic trigger goes here */ };
         _hapticTimer.AutoReset = true;
         _hapticTimer.Start();
     }
@@ -47,11 +45,13 @@ public class TimeTracker
         _hapticTimer?.Dispose();
     }
 
+    /// <summary>Sets the currently active project for time tracking.</summary>
     public static void SetActiveProject(string project)
     {
         _activeProject = project;
     }
 
+    /// <summary>Returns the name of the currently active project.</summary>
     public static string GetActiveProject() => _activeProject;
 
     private void RecordTick()
@@ -88,6 +88,7 @@ public class TimeTracker
         }
     }
 
+    /// <summary>Loads all time entries from the local log file.</summary>
     public static List<TimeEntry> LoadEntries()
     {
         if (!File.Exists(LogPath)) return new List<TimeEntry>();

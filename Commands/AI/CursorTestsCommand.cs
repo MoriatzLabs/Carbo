@@ -30,9 +30,8 @@ public class CursorTestsCommand : CarboCommand
         await SendHaptic(HapticWaveform.SharpCollision);
 
         var cliPath = GetSettingValue("claude_cli_path") ?? "claude";
-        var escaped = code.Replace("\"", "\\\"");
-        var result = await RunCLI(cliPath,
-            $"--print --prompt \"Write comprehensive unit tests for this code. Cover edge cases, happy paths, and error conditions. Return only the test code:\\n{escaped}\"");
+        var prompt = $"Write comprehensive unit tests for this code. Cover edge cases, happy paths, and error conditions. Return only the test code:\n{code}";
+        var result = await ProcessSpawner.RunWithFileInput(cliPath, "--print --prompt-file", prompt);
 
         await WriteClipboard(result);
         await SendHaptic(HapticWaveform.Completed);

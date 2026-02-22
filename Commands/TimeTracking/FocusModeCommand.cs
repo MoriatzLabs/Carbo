@@ -10,9 +10,12 @@ namespace Carbo.Commands.TimeTracking;
 /// </summary>
 public class FocusModeCommand : CarboCommand
 {
-    private static bool _isActive = false;
+    // volatile fields: _isActive and _sessionStart are written by RunCommand (SDK thread)
+    // and read/written by the timer callback (thread pool thread).
+    private static volatile bool _isActive = false;
     private static DateTime _sessionStart;
     private static System.Timers.Timer? _endTimer;
+    private static readonly object _timerLock = new();
 
     public FocusModeCommand()
     {
@@ -38,10 +41,14 @@ public class FocusModeCommand : CarboCommand
             if (!string.IsNullOrEmpty(slackToken))
                 await SlackService.SetDnd(slackToken, minutes);
 
-            _endTimer = new System.Timers.Timer(minutes * 60 * 1000);
-            _endTimer.Elapsed += async (_, _) => await OnSessionEnd();
-            _endTimer.AutoReset = false;
-            _endTimer.Start();
+            lock (_timerLock)
+            {
+                _endTimer?.Dispose();
+                _endTimer = new System.Timers.Timer(minutes * 60 * 1000);
+                _endTimer.Elapsed += OnTimerElapsed;
+                _endTimer.AutoReset = false;
+                _endTimer.Start();
+            }
 
             Notify("Focus Mode ON", $"{minutes}-min session started. Slack silenced.");
         }
@@ -51,14 +58,28 @@ public class FocusModeCommand : CarboCommand
         }
     }
 
+    // Synchronous elapsed handler — delegates async work to Task.Run to avoid async void.
+    private void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        Task.Run(async () =>
+        {
+            try { await OnSessionEnd(); }
+            catch { /* must not crash the timer thread */ }
+        });
+    }
+
     private async Task EndSession()
     {
-        _endTimer?.Stop();
-        _endTimer?.Dispose();
-        _endTimer = null;
-        _isActive = false;
+        lock (_timerLock)
+        {
+            _endTimer?.Stop();
+            _endTimer?.Dispose();
+            _endTimer = null;
+        }
 
+        _isActive = false;
         var elapsed = (int)(DateTime.Now - _sessionStart).TotalMinutes;
+
         var slackToken = GetSettingValue("slack_token");
         if (!string.IsNullOrEmpty(slackToken))
             await SlackService.EndDnd(slackToken);

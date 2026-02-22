@@ -29,9 +29,8 @@ public class ClaudeExplainCommand : CarboCommand
         await SendHaptic(HapticWaveform.SharpCollision);
 
         var cliPath = GetSettingValue("claude_cli_path") ?? "claude";
-        var escaped = code.Replace("\"", "\\\"");
-        var result = await RunCLI(cliPath,
-            $"--print --prompt \"Explain this code clearly and concisely in plain English. Include what it does, how it works, and any notable patterns:\\n{escaped}\"");
+        var prompt = $"Explain this code clearly and concisely in plain English. Include what it does, how it works, and any notable patterns:\n{code}";
+        var result = await ProcessSpawner.RunWithFileInput(cliPath, "--print --prompt-file", prompt);
 
         await WriteClipboard(result);
         await SendHaptic(HapticWaveform.Completed);

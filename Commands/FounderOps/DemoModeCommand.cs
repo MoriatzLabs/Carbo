@@ -10,7 +10,9 @@ namespace Carbo.Commands.FounderOps;
 /// </summary>
 public class DemoModeCommand : CarboCommand
 {
-    private static bool _isActive = false;
+    // volatile: read/written from the SDK call thread only; no compound read-modify-write,
+    // so volatile is sufficient without a lock.
+    private static volatile bool _isActive = false;
 
     public DemoModeCommand()
     {
@@ -27,14 +29,31 @@ public class DemoModeCommand : CarboCommand
         if (_isActive)
         {
             await SendHaptic(HapticWaveform.HappyAlert);
-            await ActivateDemoMode();
-            Notify("Demo Mode ON", "Slack silenced. Notifications suppressed. You're presenter-ready.");
+            try
+            {
+                await ActivateDemoMode();
+                Notify("Demo Mode ON", "Slack silenced. Notifications suppressed. You're presenter-ready.");
+            }
+            catch (Exception ex)
+            {
+                _isActive = false;
+                await SendHaptic(HapticWaveform.Mad);
+                Notify("Demo Mode", $"Activation failed: {ex.Message}");
+            }
         }
         else
         {
-            await SendHaptic(HapticWaveform.Wave);
-            await DeactivateDemoMode();
-            Notify("Demo Mode OFF", "Restored to normal mode.");
+            try
+            {
+                await DeactivateDemoMode();
+                await SendHaptic(HapticWaveform.Wave);
+                Notify("Demo Mode OFF", "Restored to normal mode.");
+            }
+            catch (Exception ex)
+            {
+                await SendHaptic(HapticWaveform.Mad);
+                Notify("Demo Mode", $"Deactivation failed: {ex.Message}");
+            }
         }
     }
 
@@ -42,17 +61,18 @@ public class DemoModeCommand : CarboCommand
     {
         var slackToken = GetSettingValue("slack_token");
         if (!string.IsNullOrEmpty(slackToken))
-        {
             await SlackService.SetDnd(slackToken, 120);
-        }
 
         // Suppress Windows Focus Assist via registry
-        await ProcessSpawner.Run("powershell", "-command \"Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\DefaultAccount\\Current\\default$windows.data.notifications.quiethourssettings\\windows.data.notifications.quiethourssettings' -Name 'Data' -Value ([byte[]](0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00))\"");
+        await ProcessSpawner.Run("powershell",
+            "-command \"Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CloudStore\\Store\\DefaultAccount\\Current\\default$windows.data.notifications.quiethourssettings\\windows.data.notifications.quiethourssettings' -Name 'Data' -Value ([byte[]](0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00))\"");
 
         var deckPath = GetSettingValue("pitch_deck_path");
         if (!string.IsNullOrEmpty(deckPath) && File.Exists(deckPath))
         {
-            await ProcessSpawner.Run("powershell", $"-command Start-Process '{deckPath}'");
+            // Escape single quotes in the path to prevent PowerShell injection
+            var escapedPath = deckPath.Replace("'", "''");
+            await ProcessSpawner.Run("powershell", $"-command Start-Process '{escapedPath}'");
         }
     }
 
@@ -60,8 +80,6 @@ public class DemoModeCommand : CarboCommand
     {
         var slackToken = GetSettingValue("slack_token");
         if (!string.IsNullOrEmpty(slackToken))
-        {
             await SlackService.EndDnd(slackToken);
-        }
     }
 }

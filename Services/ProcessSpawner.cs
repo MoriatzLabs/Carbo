@@ -9,6 +9,29 @@ public static class ProcessSpawner
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
 
+    /// <summary>
+    /// Writes <paramref name="content"/> to a temp file and passes its path to the CLI,
+    /// avoiding shell injection from user-supplied content.
+    /// The temp file is deleted after the process exits.
+    /// </summary>
+    public static async Task<string> RunWithFileInput(
+        string executable,
+        string flagArguments,
+        string content,
+        TimeSpan? timeout = null)
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(tempFile, content);
+            return await Run(executable, $"{flagArguments} \"{tempFile}\"", timeout);
+        }
+        finally
+        {
+            try { File.Delete(tempFile); } catch { /* best-effort */ }
+        }
+    }
+
     public static async Task<string> Run(
         string executable,
         string arguments,

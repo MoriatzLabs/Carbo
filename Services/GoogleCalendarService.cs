@@ -16,17 +16,17 @@ public static class GoogleCalendarService
 
     private static async Task<CalendarService> CreateServiceAsync()
     {
-        // Credential path managed by Logi Options+ OAuth flow
         var credPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Carbo", "google_token.json");
 
-        UserCredential credential;
-        using var stream = new FileStream(
-            Path.Combine(AppContext.BaseDirectory, "client_secrets.json"),
-            FileMode.Open, FileAccess.Read);
+        var secretsPath = Path.Combine(AppContext.BaseDirectory, "client_secrets.json");
+        if (!File.Exists(secretsPath))
+            throw new FileNotFoundException("Google OAuth secrets file not found. Place client_secrets.json in the plugin directory.", secretsPath);
 
-        credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+        using var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read);
+
+        var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
             GoogleClientSecrets.FromStream(stream).Secrets,
             new[] { CalendarService.Scope.CalendarReadonly },
             "user",
@@ -40,6 +40,7 @@ public static class GoogleCalendarService
         });
     }
 
+    /// <summary>Returns a brief for the next calendar event within the next 8 hours, or null if none.</summary>
     public static async Task<MeetingBrief?> GetNextMeetingBriefAsync()
     {
         var service = await CreateServiceAsync();
@@ -68,10 +69,11 @@ public static class GoogleCalendarService
             Title = next.Summary ?? "Untitled Meeting",
             StartTime = startTime,
             Attendees = attendees,
-            MeetingLink = next.HangoutLink ?? ""
+            MeetingLink = next.HangoutLink ?? string.Empty
         };
     }
 
+    /// <summary>Returns all calendar events for today.</summary>
     public static async Task<List<MeetingBrief>> GetTodayEventsAsync()
     {
         var service = await CreateServiceAsync();

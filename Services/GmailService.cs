@@ -16,34 +16,37 @@ public static class GmailService
 {
     private const string ApplicationName = "Carbo";
 
-    private static async Task<GmailService> CreateServiceAsync()
+    private static async Task<Google.Apis.Gmail.v1.GmailService> CreateServiceAsync()
     {
         var credPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Carbo", "google_token.json");
 
-        using var stream = new FileStream(
-            Path.Combine(AppContext.BaseDirectory, "client_secrets.json"),
-            FileMode.Open, FileAccess.Read);
+        var secretsPath = Path.Combine(AppContext.BaseDirectory, "client_secrets.json");
+        if (!File.Exists(secretsPath))
+            throw new FileNotFoundException("Google OAuth secrets file not found. Place client_secrets.json in the plugin directory.", secretsPath);
+
+        using var stream = new FileStream(secretsPath, FileMode.Open, FileAccess.Read);
 
         var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
             GoogleClientSecrets.FromStream(stream).Secrets,
             new[]
             {
-                GmailService.Scope.GmailCompose,
-                GmailService.Scope.GmailReadonly
+                Google.Apis.Gmail.v1.GmailService.Scope.GmailCompose,
+                Google.Apis.Gmail.v1.GmailService.Scope.GmailReadonly
             },
             "user",
             CancellationToken.None,
             new Google.Apis.Util.Store.FileDataStore(credPath, true));
 
-        return new GmailService(new BaseClientService.Initializer
+        return new Google.Apis.Gmail.v1.GmailService(new BaseClientService.Initializer
         {
             HttpClientInitializer = credential,
             ApplicationName = ApplicationName
         });
     }
 
+    /// <summary>Creates a Gmail draft with an optional attachment.</summary>
     public static async Task CreateDraftAsync(
         string to,
         string subject,
@@ -61,6 +64,7 @@ public static class GmailService
         await service.Users.Drafts.Create(draft, "me").ExecuteAsync();
     }
 
+    /// <summary>Returns summaries of up to <paramref name="maxResults"/> unread inbox threads.</summary>
     public static async Task<List<EmailSummary>> GetUnreadSummaryAsync(int maxResults = 10)
     {
         var service = await CreateServiceAsync();
@@ -91,7 +95,7 @@ public static class GmailService
     }
 
     private static string GetHeader(IList<MessagePartHeader> headers, string name)
-        => headers.FirstOrDefault(h => h.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Value ?? "";
+        => headers.FirstOrDefault(h => h.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
 
     private static byte[] BuildRawMessage(string to, string subject, string body, string? attachmentPath)
     {
@@ -107,9 +111,6 @@ public static class GmailService
             message.Attachments.Add(attachment);
         }
 
-        // Serialize via SmtpClient to memory stream
-        using var stream = new MemoryStream();
-        // Use reflection workaround to render raw MIME since MailMessage doesn't expose it directly
         var mime = RenderMimeMessage(message);
         return Encoding.UTF8.GetBytes(mime);
     }

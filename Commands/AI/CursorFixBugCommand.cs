@@ -29,9 +29,8 @@ public class CursorFixBugCommand : CarboCommand
         await SendHaptic(HapticWaveform.SharpCollision);
 
         var cliPath = GetSettingValue("claude_cli_path") ?? "claude";
-        var escaped = code.Replace("\"", "\\\"");
-        var result = await RunCLI(cliPath,
-            $"--print --prompt \"Identify and fix all bugs in this code. Explain each bug briefly as an inline comment, then return the corrected code:\\n{escaped}\"");
+        var prompt = $"Identify and fix all bugs in this code. Explain each bug briefly as an inline comment, then return the corrected code:\n{code}";
+        var result = await ProcessSpawner.RunWithFileInput(cliPath, "--print --prompt-file", prompt);
 
         await WriteClipboard(result);
         await SendHaptic(HapticWaveform.Completed);

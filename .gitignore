@@ -19,3 +19,8 @@ google_token.json
 
 # Local settings
 .claude/
+
+# Loose workspace / draft documents (not part of the plugin source)
+*_Final.md
+*_Draft.md
+Wispr*.exe

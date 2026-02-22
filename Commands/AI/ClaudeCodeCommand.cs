@@ -32,8 +32,8 @@ public class ClaudeCodeCommand : CarboCommand
         await SendHaptic(HapticWaveform.SharpCollision);
 
         var cliPath = GetSettingValue("claude_cli_path") ?? "claude";
-        var escaped = code.Replace("\"", "\\\"");
-        var result = await RunCLI(cliPath, $"--print --prompt \"Review and improve this code:\\n{escaped}\"");
+        var prompt = $"Review and improve this code:\n{code}";
+        var result = await ProcessSpawner.RunWithFileInput(cliPath, "--print --prompt-file", prompt);
 
         await WriteClipboard(result);
         await SendHaptic(HapticWaveform.Completed);

@@ -29,9 +29,8 @@ public class ClaudeRefactorCommand : CarboCommand
         await SendHaptic(HapticWaveform.SharpCollision);
 
         var cliPath = GetSettingValue("claude_cli_path") ?? "claude";
-        var escaped = code.Replace("\"", "\\\"");
-        var result = await RunCLI(cliPath,
-            $"--print --prompt \"Refactor this code for clarity, performance, and best practices. Return only the refactored code with no explanation:\\n{escaped}\"");
+        var prompt = $"Refactor this code for clarity, performance, and best practices. Return only the refactored code with no explanation:\n{code}";
+        var result = await ProcessSpawner.RunWithFileInput(cliPath, "--print --prompt-file", prompt);
 
         await WriteClipboard(result);
         await SendHaptic(HapticWaveform.Completed);
